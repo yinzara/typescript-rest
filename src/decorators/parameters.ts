@@ -1,6 +1,6 @@
 'use strict';
 
-import * as _ from 'lodash';
+import _ from 'lodash';
 import 'reflect-metadata';
 import { MethodParam, ParamType, ServiceClass, ServiceMethod } from '../server/model/metadata';
 import { ServerContainer } from '../server/server-container';

@@ -1,6 +1,6 @@
 'use strict';
 
-import * as debug from 'debug';
+import debug from 'debug';
 import { Errors } from '../typescript-rest';
 import { ParamType, ServiceProperty } from './model/metadata';
 import { ParameterConverter, ServiceContext } from './model/server-types';
@@ -44,21 +44,18 @@ export class ParameterProcessor {
         parameterMapper.set(ParamType.body, (context, property) => this.convertType(context.request.body, property.propertyType));
         parameterMapper.set(ParamType.file, (context, property) => {
             this.debugger.runtime('Processing file parameter');
-            // @ts-ignore
-            const files: Array<Express.Multer.File> = context.request.files ? context.request.files[property.name] : null;
+            const files: Array<Express.Multer.File> = this.getFiles(context, property.name);
             if (files && files.length > 0) {
                 return files[0];
             }
             return null;
         });
-        parameterMapper.set(ParamType.files, (context, property) => {
-            this.debugger.runtime('Processing files parameter');
-            // @ts-ignore
-            return context.request.files[property.name];
-        });
-        parameterMapper.set(ParamType.form, (context, property) => this.convertType(context.request.body[property.name], property.propertyType));
+        parameterMapper.set(ParamType.files, (context, property) =>
+            this.getFiles(context, property.name));
+        parameterMapper.set(ParamType.form, (context, property) =>
+            this.convertType(this.getBody(context)[property.name], property.propertyType));
         parameterMapper.set(ParamType.param, (context, property) => {
-            const paramValue = context.request.body[property.name] ||
+            const paramValue = this.getBody(context)[property.name] ||
                 context.request.query[property.name];
             return this.convertType(paramValue, property.propertyType);
         });
@@ -72,7 +69,24 @@ export class ParameterProcessor {
         return parameterMapper;
     }
 
-    private convertType(paramValue: string | boolean, paramType: Function): any {
+    /**
+     * Multer stores uploads per field name when configured with fields(), which is
+     * how this library always invokes it.
+     */
+    private getFiles(context: ServiceContext, name: string): Array<Express.Multer.File> {
+        const files = context.request.files as Record<string, Array<Express.Multer.File>>;
+        return files ? files[name] : null;
+    }
+
+    /**
+     * Express only populates request.body when a body parser matched the request,
+     * so it is undefined for requests that carry no (or an unparseable) body.
+     */
+    private getBody(context: ServiceContext): any {
+        return context.request.body || {};
+    }
+
+    private convertType(paramValue: string | Array<string> | boolean, paramType: Function): any {
         const serializedType = paramType['name'];
         this.debugger.runtime('Processing parameter. received type: %s, received value:', serializedType, paramValue);
         switch (serializedType) {
@@ -80,13 +94,14 @@ export class ParameterProcessor {
                 return paramValue === undefined ? paramValue : parseFloat(paramValue as string);
             case 'Boolean':
                 return paramValue === undefined ? paramValue : paramValue === 'true' || paramValue === true;
-            default:
+            default: {
                 let converter = ServerContainer.get().paramConverters.get(paramType);
                 if (!converter) {
                     converter = ParameterProcessor.defaultParamConverter;
                 }
 
                 return converter(paramValue);
+            }
         }
     }
 }

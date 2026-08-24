@@ -1,6 +1,6 @@
-import * as express from 'express';
-import * as _ from 'lodash';
-import * as request from 'request';
+import express from 'express';
+import _ from 'lodash';
+import supertest from 'supertest';
 import {
     Accept, AcceptLanguage, ContextAccept, ContextLanguage, GET,
     Path, POST, PUT, Return, Server
@@ -109,14 +109,12 @@ export class SimpleService {
     }
 }
 
+let app: express.Application;
+
 describe('Server Tests', () => {
 
     beforeAll(() => {
-        return startApi();
-    });
-
-    afterAll(() => {
-        stopApi();
+        app = startApi();
     });
 
     // describe('Server', () => {
@@ -131,175 +129,108 @@ describe('Server Tests', () => {
     // });
 
     describe('Server', () => {
-        it('should choose language correctly', (done) => {
-            request({
-                headers: { 'Accept-Language': 'pt-BR' },
-                url: 'http://localhost:5674/accept'
-            }, (error, response, body) => {
-                expect(body).toEqual('aceito');
-                done();
-            });
+        it('should choose language correctly', async () => {
+            const response = await supertest(app).get('/accept')
+                .set('Accept-Language', 'pt-BR');
+            expect(response.text).toEqual('aceito');
         });
 
-        it('should choose language correctly, when declared on methods', (done) => {
-            request({
-                headers: { 'Accept-Language': 'fr' },
-                url: 'http://localhost:5674/accept/fr'
-            }, (error, response, body) => {
-                expect(body).toEqual('OK');
-                done();
-            });
+        it('should choose language correctly, when declared on methods', async () => {
+            const response = await supertest(app).get('/accept/fr')
+                .set('Accept-Language', 'fr');
+            expect(response.text).toEqual('OK');
         });
 
-        it('should reject unacceptable languages', (done) => {
-            request({
-                headers: { 'Accept-Language': 'fr' },
-                url: 'http://localhost:5674/accept'
-            }, (error, response, body) => {
-                expect(response.statusCode).toEqual(406);
-                done();
-            });
+        it('should reject unacceptable languages', async () => {
+            const response = await supertest(app).get('/accept')
+                .set('Accept-Language', 'fr');
+            expect(response.status).toEqual(406);
         });
 
-        it('should use default language if none specified', (done) => {
-            request({
-                url: 'http://localhost:5674/accept'
-            }, (error, response, body) => {
-                expect(body).toEqual('accepted');
-                done();
-            });
+        it('should use default language if none specified', async () => {
+            const response = await supertest(app).get('/accept');
+            expect(response.text).toEqual('accepted');
         });
 
-        it('should use default media type if none specified', (done) => {
-            request({
-                url: 'http://localhost:5674/accept/types'
-            }, (error, response, body) => {
-                expect(body).toEqual('accepted');
-                done();
-            });
+        it('should use default media type if none specified', async () => {
+            const response = await supertest(app).get('/accept/types');
+            expect(response.text).toEqual('accepted');
         });
-        it('should reject unacceptable media types', (done) => {
-            request({
-                headers: { 'Accept': 'text/html' },
-                url: 'http://localhost:5674/accept/types'
-            }, (error, response, body) => {
-                expect(response.statusCode).toEqual(406);
-                done();
-            });
+        it('should reject unacceptable media types', async () => {
+            const response = await supertest(app).get('/accept/types')
+                .set('Accept', 'text/html');
+            expect(response.status).toEqual(406);
         });
 
-        it('should return 404 when unmapped resources are requested', (done) => {
-            request({
-                url: 'http://localhost:5674/unmapped/resource'
-            }, (error, response, body) => {
-                expect(response.statusCode).toEqual(404);
-                done();
-            });
+        it('should return 404 when unmapped resources are requested', async () => {
+            const response = await supertest(app).get('/unmapped/resource');
+            expect(response.status).toEqual(404);
         });
 
-        it('should return 405 when a not supported method is requeted to a mapped resource', (done) => {
-            request.post({
-                url: 'http://localhost:5674/accept'
-            }, (error, response, body) => {
-                expect(response.statusCode).toEqual(405);
-                const allowed: string | Array<string> = response.headers['allow'];
-                expect(allowed).toContain('GET');
-                expect(allowed).toContain('PUT');
-                done();
-            });
+        it('should return 405 when a not supported method is requeted to a mapped resource', async () => {
+            const response = await supertest(app).post('/accept');
+            expect(response.status).toEqual(405);
+            const allowed: string | Array<string> = response.headers['allow'];
+            expect(allowed).toContain('GET');
+            expect(allowed).toContain('PUT');
         });
-        it('should support async and await on REST methods', (done) => {
-            request('http://localhost:5674/async/test', (error, response, body) => {
-                expect(body).toEqual('OK');
-                done();
-            });
+        it('should support async and await on REST methods', async () => {
+            const response = await supertest(app).get('/async/test');
+            expect(response.text).toEqual('OK');
         });
     });
 
     describe('Services that use referenced types', () => {
-        it('should return 202 for POST on path: /accepted', (done) => {
-            request.post({
-                body: JSON.stringify(new Person(123, 'person 123', 35)),
-                headers: { 'content-type': 'application/json' },
-                url: 'http://localhost:5674/reference/accepted'
-            }, (error, response, body) => {
-                expect(response.statusCode).toEqual(202);
-                expect(response.headers['location']).toEqual('123');
-                done();
-            });
+        it('should return 202 for POST on path: /accepted', async () => {
+            const response = await supertest(app).post('/reference/accepted')
+                .set('content-type', 'application/json')
+                .send(JSON.stringify(new Person(123, 'person 123', 35)));
+            expect(response.status).toEqual(202);
+            expect(response.headers['location']).toEqual('123');
         });
 
-        it('should return 301 for POST on path: /moved', (done) => {
-            request.post({
-                body: JSON.stringify(new Person(123, 'person 123', 35)),
-                headers: { 'content-type': 'application/json' },
-                url: 'http://localhost:5674/reference/moved'
-            }, (error, response, body) => {
-                expect(response.statusCode).toEqual(301);
-                expect(response.headers['location']).toEqual('123');
-                done();
-            });
+        it('should return 301 for POST on path: /moved', async () => {
+            const response = await supertest(app).post('/reference/moved')
+                .set('content-type', 'application/json')
+                .send(JSON.stringify(new Person(123, 'person 123', 35)));
+            expect(response.status).toEqual(301);
+            expect(response.headers['location']).toEqual('123');
         });
 
-        it('should return 302 for POST on path: /movedtemp', (done) => {
-            request.post({
-                body: JSON.stringify(new Person(123, 'person 123', 35)),
-                headers: { 'content-type': 'application/json' },
-                url: 'http://localhost:5674/reference/movedtemp'
-            }, (error, response, body) => {
-                expect(response.statusCode).toEqual(302);
-                expect(response.headers['location']).toEqual('123');
-                done();
-            });
+        it('should return 302 for POST on path: /movedtemp', async () => {
+            const response = await supertest(app).post('/reference/movedtemp')
+                .set('content-type', 'application/json')
+                .send(JSON.stringify(new Person(123, 'person 123', 35)));
+            expect(response.status).toEqual(302);
+            expect(response.headers['location']).toEqual('123');
         });
     });
 
     describe('Service classes with same name', () => {
-        it('should should work when imported via loadServices', (done) => {
-            request.get({
-                url: 'http://localhost:5674/simplepath'
-            }, (error, response, body) => {
-                expect(response.statusCode).toEqual(200);
-                expect(body).toEqual('simpleservice');
-                done();
-            });
+        it('should should work when imported via loadServices', async () => {
+            const response = await supertest(app).get('/simplepath');
+            expect(response.status).toEqual(200);
+            expect(response.text).toEqual('simpleservice');
         });
-        it('should should work when imported via buildServices', (done) => {
-            request.get({
-                url: 'http://localhost:5674/othersimplepath'
-            }, (error, response, body) => {
-                expect(response.statusCode).toEqual(200);
-                expect(body).toEqual('othersimpleservice');
-                done();
-            });
+        it('should should work when imported via buildServices', async () => {
+            const response = await supertest(app).get('/othersimplepath');
+            expect(response.status).toEqual(200);
+            expect(response.text).toEqual('othersimpleservice');
         });
     });
 
 });
 
-let server: any;
 
-export function startApi(): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
-        const app: express.Application = express();
-        app.set('env', 'test');
-        // Server.setFileLimits({
-        //     fieldSize: 1024 * 1024
-        // });
-        Server.loadControllers(app, ['test/data/*', '!**/*.yaml'], `${__dirname}/../..`);
-        Server.buildServices(app, AcceptServiceTest, ReferenceServiceTest,
-            AsyncServiceTest, SimpleService);
-        server = app.listen(5674, (err?: any) => {
-            if (err) {
-                return reject(err);
-            }
-            resolve();
-        });
-    });
+export function startApi(): express.Application {
+    const restApp: express.Application = express();
+    restApp.set('env', 'test');
+    // Server.setFileLimits({
+    //     fieldSize: 1024 * 1024
+    // });
+    Server.loadControllers(restApp, ['test/data/*', '!**/*.yaml'], `${__dirname}/../..`);
+    Server.buildServices(restApp, AcceptServiceTest, ReferenceServiceTest,
+        AsyncServiceTest, SimpleService);
+    return restApp;
 }
 
-export function stopApi() {
-    if (server) {
-        server.close();
-    }
-}

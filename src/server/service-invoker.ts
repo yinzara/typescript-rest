@@ -1,8 +1,8 @@
 'use strict';
 
-import * as debug from 'debug';
-import * as express from 'express';
-import * as _ from 'lodash';
+import debug from 'debug';
+import express from 'express';
+import _ from 'lodash';
 import { Errors } from '../typescript-rest';
 import { ServiceClass, ServiceMethod, ServiceProperty } from './model/metadata';
 import { DownloadBinaryData, DownloadResource, NoResponse } from './model/return-types';
@@ -189,9 +189,11 @@ export class ServiceInvoker {
                     }
                     break;
                 default:
-                    value === null 
-                        ? context.response.send(value) 
-                        : await this.sendComplexValue(context, value);
+                    if (value === null) {
+                        context.response.send(value);
+                    } else {
+                        await this.sendComplexValue(context, value);
+                    }
             }
         } else {
             this.debugger('Do not send any response value');

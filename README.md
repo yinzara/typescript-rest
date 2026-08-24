@@ -19,12 +19,18 @@ It can be used to define your APIs using decorators.
   - [Documentation](https://github.com/thiagobustamante/typescript-rest/wiki)
   - [Boilerplate Project](#boilerplate-project)  
 
+## Requirements
+
+- Node.js 20.19 or newer
+- TypeScript 5.0 or newer
+- Express 5
+
 ## Installation
 
 This library only works with typescript. Ensure it is installed:
 
 ```bash
-npm install typescript -g
+npm install -D typescript
 ```
 
 To install typescript-rest:
@@ -42,15 +48,49 @@ Typescript-rest requires the following TypeScript compilation options in your ts
   "compilerOptions": {
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "target": "es6" // or anything newer like esnext
+    "target": "es6", // or anything newer like esnext
+    "useDefineForClassFields": false
   }
 }
 ```
 
+`useDefineForClassFields` defaults to `true` when `target` is `ES2022` or newer. It
+must be set to `false`: with it enabled, declared class fields are re-defined as
+`undefined` on every instance, which erases the values that `@Context`, `@PathParam`
+and IoC property injection assign to those fields.
+
+## Upgrading to 4.x
+
+Version 4 moves the library to Express 5 and updates every other dependency. The
+changes that can affect your code:
+
+- **Express 5 is now required.** Express 5 uses `path-to-regexp` v8, which changes
+  the syntax accepted by `@Path`. Both of the old forms are now hard errors at
+  startup, not silent misbehaviour:
+
+  | Old (Express 4) | New (Express 5) | Notes                                                                                                   |
+  | --- | --- |---------------------------------------------------------------------------------------------------------|
+  | `@Path('/user/:id?')` | `@Path('/user{/:id}')` | the braces wrap the slash too with optional path params                                                 |
+  | `@Path('/files/*')` | `@Path('/files/*splat')` | wildcards must be named; the value is an **array** of segments, e.g. `['a','b','c']` for `/files/a/b/c` |
+
+  Plain parameters such as `@Path('/user/:id')` are unchanged, so most services
+  need no edits.
+- **`request.body` is `undefined` when no body was parsed.** Express 5 no longer
+  defaults it to `{}`. A `@BodyParam`-style parameter now receives `undefined`
+  rather than an empty object when the request carries no matching body.
+  `@Param` and `@FormParam` handle this internally and are unaffected.
+- **Passport sessions are opt-in.** `PassportAuthenticator` no longer registers
+  `passport.session()` by default, because Passport 0.6+ throws when no session
+  store is mounted. If you use sessions, mount your session middleware (for example
+  `express-session`) on the router and construct the authenticator with
+  `authOptions: { session: true }`.
+- **`body-parser` is no longer a dependency.** The library uses the parsers built
+  into Express 5. `@BodyOptions` is unchanged.
+
 ## Basic Usage
 
 ```typescript
-import * as express from "express";
+import express from "express";
 import {Server, Path, GET, PathParam} from "typescript-rest";
 
 @Path("/hello")

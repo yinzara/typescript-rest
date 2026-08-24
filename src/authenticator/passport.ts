@@ -1,10 +1,19 @@
 'use strict';
-import * as express from 'express';
-import * as _ from 'lodash';
-import * as passport from 'passport';
+import express from 'express';
+import _ from 'lodash';
+import passport from 'passport';
 import { ServiceAuthenticator } from '../server/model/server-types';
 
 export interface PassportAuthenticatorOptions {
+    /**
+     * Options passed through to passport.authenticate().
+     *
+     * Note that `authOptions.session` defaults to false. Passport requires a
+     * session store (such as express-session) to already be mounted on the
+     * router before passport.session() is used, and it throws when one is
+     * missing. Set `session: true` only after mounting your own session
+     * middleware.
+     */
     authOptions?: passport.AuthenticateOptions;
     rolesKey?: string;
     strategyName?: string;
@@ -20,7 +29,16 @@ export class PassportAuthenticator implements ServiceAuthenticator {
         this.options = options;
         const authStrategy = options.strategyName || strategy.name || 'default_strategy';
         passport.use(authStrategy, strategy);
-        this.authenticator = passport.authenticate(authStrategy, options.authOptions || {});
+        this.authenticator = passport.authenticate(authStrategy, this.getAuthOptions());
+    }
+
+    /**
+     * The options handed to passport.authenticate(). Sessions are opt-in: passport
+     * establishes a login session unless told otherwise, and doing so throws when no
+     * session store is mounted on the router.
+     */
+    private getAuthOptions(): passport.AuthenticateOptions {
+        return _.defaults({}, this.options.authOptions, { session: false });
     }
 
     public getMiddleware(): express.RequestHandler {
@@ -34,7 +52,7 @@ export class PassportAuthenticator implements ServiceAuthenticator {
 
     public initialize(router: express.Router): void {
         router.use(passport.initialize());
-        const useSession = _.get(this.options, 'authOptions.session', true);
+        const useSession = this.getAuthOptions().session;
         if (useSession) {
             router.use(passport.session());
             if (this.options.serializeUser && this.options.deserializeUser) {

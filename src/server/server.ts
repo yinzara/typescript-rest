@@ -1,12 +1,12 @@
 'use strict';
 
-import * as debug from 'debug';
-import * as express from 'express';
-import * as fs from 'fs-extra';
-import * as _ from 'lodash';
+import debug from 'debug';
+import express from 'express';
+import fs from 'fs-extra';
+import _ from 'lodash';
 import 'multer';
 import * as path from 'path';
-import * as YAML from 'yamljs';
+import YAML from 'yaml';
 import {
     FileLimits, HttpMethod, ParameterConverter,
     ServiceAuthenticator, ServiceFactory
@@ -64,7 +64,9 @@ export class Server {
             } catch (e) {
                 serverDebugger('Error loading services for pattern: %j. Error: %o', patterns, e);
                 serverDebugger('ImportedTypes: %o', importedTypes);
-                throw new TypeError(`Error loading services for pattern: ${JSON.stringify(patterns)}. Error: ${e.message}`);
+                throw new TypeError(
+                    `Error loading services for pattern: ${JSON.stringify(patterns)}. Error: ${(e as Error).message}`,
+                    { cause: e });
             }
         }
     }
@@ -268,12 +270,12 @@ export class Server {
                 swaggerDocument.schemes = options.schemes;
             }
 
-            router.get(path.posix.join('/', options.endpoint, 'json'), (req, res, next) => {
+            router.get(path.posix.join('/', options.endpoint, 'json'), (req, res) => {
                 res.send(swaggerDocument);
             });
-            router.get(path.posix.join('/', options.endpoint, 'yaml'), (req, res, next) => {
+            router.get(path.posix.join('/', options.endpoint, 'yaml'), (req, res) => {
                 res.set('Content-Type', 'text/vnd.yaml');
-                res.send(YAML.stringify(swaggerDocument, 1000));
+                res.send(YAML.stringify(swaggerDocument, { lineWidth: 0 }));
             });
             router.use(path.posix.join('/', options.endpoint), swaggerUi.serve, swaggerUi.setup(swaggerDocument, options.swaggerUiOptions));
         }
@@ -284,7 +286,7 @@ export class Server {
     private static loadSwaggerDocument(options: SwaggerOptions) {
         let swaggerDocument: any;
         if (_.endsWith(options.filePath, '.yml') || _.endsWith(options.filePath, '.yaml')) {
-            swaggerDocument = YAML.load(options.filePath);
+            swaggerDocument = YAML.parse(fs.readFileSync(options.filePath, 'utf8'));
         }
         else {
             swaggerDocument = fs.readJSONSync(options.filePath);

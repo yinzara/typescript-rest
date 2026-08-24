@@ -1,9 +1,9 @@
 'use strict';
 
-import * as express from 'express';
-import * as fs from 'fs';
-import * as _ from 'lodash';
-import * as request from 'request';
+import express from 'express';
+import fs from 'fs';
+import _ from 'lodash';
+import supertest from 'supertest';
 import { Container } from 'typescript-ioc';
 import {
     BodyOptions, BodyType, Context, ContextNext,
@@ -28,7 +28,7 @@ export interface DataParam {
     param2: Date;
 }
 
-@Path("testparams")
+@Path('testparams')
 export class TestParamsService {
     @Context
     public context: ServiceContext;
@@ -194,7 +194,7 @@ export class TestParamsService {
     }
 }
 
-@Path("testreturn")
+@Path('testreturn')
 export class TestReturnService {
 
     @GET
@@ -218,311 +218,209 @@ export class TestReturnService {
     }
 }
 
+let app: express.Application;
+
 describe('Data Types Tests', () => {
 
     beforeAll(() => {
-        return startApi();
-    });
-
-    afterAll(() => {
-        stopApi();
+        app = startApi();
     });
 
     describe('Services that handle Objects', () => {
-        it('should be able to return Objects as JSON', (done) => {
-            request('http://localhost:5674/testparams/people/123', (error, response, body) => {
-                const result: Person = JSON.parse(body);
-                expect(result.id).toEqual(123);
-                done();
-            });
+        it('should be able to return Objects as JSON', async () => {
+            const response = await supertest(app).get('/testparams/people/123');
+            const result: Person = JSON.parse(response.text);
+            expect(result.id).toEqual(123);
         });
 
-        it('should be able to receive parametes as Objects', (done) => {
+        it('should be able to receive parametes as Objects', async () => {
             const person = new Person(123, 'Person 123', 35);
-            request.put({
-                body: JSON.stringify(person),
-                headers: { 'content-type': 'application/json' },
-                url: 'http://localhost:5674/testparams/people/123'
-            }, (error, response, body) => {
-                const receivedPerson = JSON.parse(body);
-                expect(receivedPerson).toEqual(person);
-                done();
-            });
+            const response = await supertest(app).put('/testparams/people/123')
+                .set('content-type', 'application/json')
+                .send(JSON.stringify(person));
+            const receivedPerson = JSON.parse(response.text);
+            expect(receivedPerson).toEqual(person);
         });
 
-        it('should be able to return an array of Objects', (done) => {
-            request('http://localhost:5674/testparams/people?start=0&size=3', (error, response, body) => {
-                const result: Array<Person> = JSON.parse(body);
-                expect(result.length).toEqual(3);
-                done();
-            });
+        it('should be able to return an array of Objects', async () => {
+            const response = await supertest(app).get('/testparams/people?start=0&size=3');
+            const result: Array<Person> = JSON.parse(response.text);
+            expect(result.length).toEqual(3);
         });
 
-        it('should be able to receive objects that follow size constraints', (done) => {
-            request.post({
-                body: JSON.stringify(new Person(123, 'person', 35)),
-                headers: { 'content-type': 'application/json' },
-                url: 'http://localhost:5674/testparams/people'
-            }, function (error, response, body) {
-                expect(response.statusCode).toEqual(201);
-                expect(response.headers['location']).toEqual('/testparams/people/123');
-                const result: Person = JSON.parse(body);
-                expect(result.id).toEqual(123);
-                done();
-            });
+        it('should be able to receive objects that follow size constraints', async () => {
+            const response = await supertest(app).post('/testparams/people')
+                .set('content-type', 'application/json')
+                .send(JSON.stringify(new Person(123, 'person', 35)));
+            expect(response.status).toEqual(201);
+            expect(response.headers['location']).toEqual('/testparams/people/123');
+            const result: Person = JSON.parse(response.text);
+            expect(result.id).toEqual(123);
         });
 
-        it('should be able to reject objects that do not follow size constraints', (done) => {
-            request.post({
-                body: JSON.stringify(new Person(123,
-                    'this is a very large payload that should be rejected', 35)),
-                headers: { 'content-type': 'application/json' },
-                url: 'http://localhost:5674/testparams/people'
-            }, function (error, response, body) {
-                expect(response.statusCode).toEqual(413);
-                done();
-            });
+        it('should be able to reject objects that do not follow size constraints', async () => {
+            const response = await supertest(app).post('/testparams/people')
+                .set('content-type', 'application/json')
+                .send(JSON.stringify(new Person(123,
+                    'this is a very large payload that should be rejected', 35)));
+            expect(response.status).toEqual(413);
         });
 
-        it('should be able to send a Date into a json object ', (done) => {
+        it('should be able to send a Date into a json object ', async () => {
             const date = new Date();
-            request.post({
-                body: {
+            const response = await supertest(app).post('/testparams/date')
+                .send({
                     param1: date.toString(),
                     param2: date
-                },
-                json: true,
-                url: 'http://localhost:5674/testparams/date'
-            }, (error, response, body) => {
-                expect(body).toEqual('OK');
-                done();
-            });
+                });
+            expect(response.text).toEqual('OK');
         });
     });
 
     describe('A rest Service', () => {
-        it('should parse header and cookies correclty', (done) => {
-            request({
-                headers: { 'my-header': 'header value', 'Cookie': 'my-cookie=cookie value' },
-                url: 'http://localhost:5674/testparams/headers'
-            }, (error, response, body) => {
-                expect(body).toEqual('cookie: cookie value|header: header value');
-                done();
-            });
+        it('should parse header and cookies correclty', async () => {
+            const response = await supertest(app).get('/testparams/headers')
+                .set('my-header', 'header value')
+                .set('Cookie', 'my-cookie=cookie value');
+            expect(response.text).toEqual('cookie: cookie value|header: header value');
         });
 
-        it('should read parameters as class property', (done) => {
-            request({
-                headers: { 'my-header': 'header value' },
-                url: 'http://localhost:5674/testparams/myheader'
-            }, (error, response, body) => {
-                expect(body).toEqual('header: header value');
-                done();
-            });
+        it('should read parameters as class property', async () => {
+            const response = await supertest(app).get('/testparams/myheader')
+                .set('my-header', 'header value');
+            expect(response.text).toEqual('header: header value');
         });
 
-        it('should parse multi param as query param', (done) => {
-            request.post({
-                url: 'http://localhost:5674/testparams/multi-param?param=myQueryValue'
-            }, (error, response, body) => {
-                expect(body).toEqual('myQueryValue');
-                done();
-            });
+        it('should parse multi param as query param', async () => {
+            const response = await supertest(app).post('/testparams/multi-param?param=myQueryValue');
+            expect(response.text).toEqual('myQueryValue');
         });
 
-        it('should parse multi param as form param', (done) => {
+        it('should parse multi param as form param', async () => {
             const form = {
                 'param': 'formParam'
             };
-            request.post({
-                'form': form,
-                'url': 'http://localhost:5674/testparams/multi-param'
-            }, (error, response, body) => {
-                expect(body).toEqual('formParam');
-                expect(response.statusCode).toEqual(200);
-                done();
-            });
+            const response = await supertest(app).post('/testparams/multi-param')
+                .type('form')
+                .send(form);
+            expect(response.text).toEqual('formParam');
+            expect(response.status).toEqual(200);
         });
 
-        it('should accept Context parameters', (done) => {
-            request({
-                url: 'http://localhost:5674/testparams/context?q=123'
-            }, (error, response, body) => {
-                expect(body).toEqual('true');
-                expect(response.statusCode).toEqual(201);
-                done();
-            });
+        it('should accept Context parameters', async () => {
+            const response = await supertest(app).get('/testparams/context?q=123');
+            expect(response.text).toEqual('true');
+            expect(response.status).toEqual(201);
         });
 
-        it('should accept file parameters', (done) => {
-            const req = request.post('http://localhost:5674/testparams/upload', (error, response, body) => {
-                expect(body).toEqual('true');
-                expect(response.statusCode).toEqual(200);
-                done();
-            });
-            const form = req.form();
-            form.append('myField', 'my_value');
-            form.append('myFile', fs.createReadStream(__dirname + '/datatypes.spec.ts'), 'test-rest.spec.ts');
+        it('should accept file parameters', async () => {
+            const response = await supertest(app).post('/testparams/upload')
+                .field('myField', 'my_value')
+                .attach('myFile', __dirname + '/datatypes.spec.ts', 'test-rest.spec.ts');
+            expect(response.text).toEqual('true');
+            expect(response.status).toEqual(200);
         });
 
-        it('should use sent value for query param that defines a default', (done) => {
-            request({
-                url: 'http://localhost:5674/testparams/default-query?limit=5&prefix=test&expand=false'
-            }, (error, response, body) => {
-                expect(body).toEqual('limit:5|prefix:test|expand:false');
-                done();
-            });
+        it('should use sent value for query param that defines a default', async () => {
+            const response = await supertest(app).get('/testparams/default-query?limit=5&prefix=test&expand=false');
+            expect(response.text).toEqual('limit:5|prefix:test|expand:false');
         });
 
-        it('should use provided default value for missing query param', (done) => {
-            request({
-                url: 'http://localhost:5674/testparams/default-query'
-            }, (error, response, body) => {
-                expect(body).toEqual('limit:20|prefix:default|expand:true');
-                done();
-            });
+        it('should use provided default value for missing query param', async () => {
+            const response = await supertest(app).get('/testparams/default-query');
+            expect(response.text).toEqual('limit:20|prefix:default|expand:true');
         });
 
-        it('should handle empty string value for default parameter', (done) => {
-            request({
-                url: 'http://localhost:5674/testparams/default-query?limit=&prefix=&expand='
-            }, (error, response, body) => {
-                expect(body).toEqual('limit:NaN|prefix:|expand:false');
-                done();
-            });
+        it('should handle empty string value for default parameter', async () => {
+            const response = await supertest(app).get('/testparams/default-query?limit=&prefix=&expand=');
+            expect(response.text).toEqual('limit:NaN|prefix:|expand:false');
         });
 
-        it('should use sent value for optional query param', (done) => {
-            request({
-                url: 'http://localhost:5674/testparams/optional-query?limit=5&prefix=test&expand=false'
-            }, (error, response, body) => {
-                expect(body).toEqual('limit:5|prefix:test|expand:false');
-                done();
-            });
+        it('should use sent value for optional query param', async () => {
+            const response = await supertest(app).get('/testparams/optional-query?limit=5&prefix=test&expand=false');
+            expect(response.text).toEqual('limit:5|prefix:test|expand:false');
         });
 
-        it('should use undefined as value for missing optional query param', (done) => {
-            request({
-                url: 'http://localhost:5674/testparams/optional-query'
-            }, (error, response, body) => {
-                expect(body).toEqual('limit:undefined|prefix:undefined|expand:undefined');
-                done();
-            });
+        it('should use undefined as value for missing optional query param', async () => {
+            const response = await supertest(app).get('/testparams/optional-query');
+            expect(response.text).toEqual('limit:undefined|prefix:undefined|expand:undefined');
         });
 
-        it('should handle empty string value for optional parameter', (done) => {
-            request({
-                url: 'http://localhost:5674/testparams/optional-query?limit=&prefix=&expand='
-            }, (error, response, body) => {
-                expect(body).toEqual('limit:NaN|prefix:|expand:false');
-                done();
-            });
+        it('should handle empty string value for optional parameter', async () => {
+            const response = await supertest(app).get('/testparams/optional-query?limit=&prefix=&expand=');
+            expect(response.text).toEqual('limit:NaN|prefix:|expand:false');
         });
     });
     describe('Download Service', () => {
-        it('should return a file', (done) => {
-            request({
-                url: 'http://localhost:5674/testparams/download'
-            }, (error, response, body) => {
-                expect(response.headers['content-type']).toEqual('application/javascript');
-                expect(_.startsWith(body.toString(), '\'use strict\';')).toEqual(true);
-                done();
-            });
+        it('should return a file', async () => {
+            const response = await supertest(app).get('/testparams/download');
+            expect(response.headers['content-type']).toEqual('application/javascript');
+            expect(_.startsWith(response.text.toString(), '\'use strict\';')).toEqual(true);
         });
-        it('should return a referenced file', (done) => {
-            request({
-                url: 'http://localhost:5674/testparams/download/ref'
-            }, (error, response, body) => {
-                expect(_.startsWith(body.toString(), '\'use strict\';')).toEqual(true);
-                done();
-            });
+        it('should return a referenced file', async () => {
+            const response = await supertest(app).get('/testparams/download/ref')
+                .buffer(true);
+            expect(_.startsWith(response.body.toString(), '\'use strict\';')).toEqual(true);
         });
     });
 
     describe('Raw Body Service', () => {
-        it('should accept a string as a body', (done) => {
+        it('should accept a string as a body', async () => {
             const data = '1;2;3;4;\n5;6;7;8;\n9;10;11;12;';
-            request.post({
-                body: data,
-                headers: { 'content-type': 'text/plain' },
-                url: 'http://localhost:5674/testparams/stringbody'
-            }, (error, response, body) => {
-                expect(body).toEqual(data);
-                done();
-            });
+            const response = await supertest(app).post('/testparams/stringbody')
+                .set('content-type', 'text/plain')
+                .send(data);
+            expect(response.text).toEqual(data);
         });
 
-        it('should accept a buffer as a body', (done) => {
+        it('should accept a buffer as a body', async () => {
             const data = Buffer.from('1;2;3;4;\n5;6;7;8;\n9;10;11;12;');
-            request.post({
-                body: data,
-                headers: { 'content-type': 'text/plain' },
-                url: 'http://localhost:5674/testparams/rawbody'
-            }, (error, response, body) => {
-                expect(body).toEqual('true');
-                done();
-            });
+            const response = await supertest(app).post('/testparams/rawbody')
+                .set('content-type', 'text/plain')
+                .send(data);
+            expect(response.text).toEqual('true');
         });
 
-        it('should accept a string as a body with custom mediatype', (done) => {
+        it('should accept a string as a body with custom mediatype', async () => {
             const data = '1;2;3;4;\n5;6;7;8;\n9;10;11;12;';
-            request.post({
-                body: data,
-                headers: { 'content-type': 'text/myformat' },
-                url: 'http://localhost:5674/testparams/stringbodytype'
-            }, (error, response, body) => {
-                expect(body).toEqual(data);
-                done();
-            });
+            const response = await supertest(app).post('/testparams/stringbodytype')
+                .set('content-type', 'text/myformat')
+                .send(data);
+            expect(response.text).toEqual(data);
         });
 
-        it('should accept a string as a body with custom mediatype', (done) => {
+        it('should accept a string as a body with custom mediatype', async () => {
             const data = '1;2;3;4;\n5;6;7;8;\n9;10;11;12;';
-            request.post({
-                body: data,
-                headers: { 'content-type': 'text/plain' },
-                url: 'http://localhost:5674/testparams/stringbodytype'
-            }, (error, response, body) => {
-                expect(body).toEqual('{}');
-                done();
-            });
+            const response = await supertest(app).post('/testparams/stringbodytype')
+                .set('content-type', 'text/plain')
+                .send(data);
+            expect(response.text).toEqual('');
+            expect(response.status).toEqual(204);
         });
     });
 
     describe('No Response Service', () => {
-        it('should not send a value when NoResponse is returned', (done) => {
-            request({
-                url: 'http://localhost:5674/testreturn/noresponse'
-            }, (error, response, body) => {
-                expect(body).toEqual('handled by middleware');
-                done();
-            });
+        it('should not send a value when NoResponse is returned', async () => {
+            const response = await supertest(app).get('/testreturn/noresponse');
+            expect(response.text).toEqual('handled by middleware');
         });
-        it('should not be handled as an empty object', (done) => {
-            request({
-                url: 'http://localhost:5674/testreturn/empty'
-            }, (error, response, body) => {
-                const val = JSON.parse(body);
-                expect(Object.keys(val)).toHaveLength(0);
-                done();
-            });
+        it('should not be handled as an empty object', async () => {
+            const response = await supertest(app).get('/testreturn/empty');
+            const val = JSON.parse(response.text);
+            expect(Object.keys(val)).toHaveLength(0);
         });
     });
 
     describe('NewResource return type', () => {
-        it('should handle types referenced from other modules', (done) => {
-            request.post({
-                url: 'http://localhost:5674/testreturn/externalmodule'
-            }, (error, response, body) => {
-                expect(response.statusCode).toEqual(201);
-                expect(response.headers.location).toEqual('/testreturn/externalmodule/123');
-                done();
-            });
+        it('should handle types referenced from other modules', async () => {
+            const response = await supertest(app).post('/testreturn/externalmodule');
+            expect(response.status).toEqual(201);
+            expect(response.headers.location).toEqual('/testreturn/externalmodule/123');
         });
     });
 
     describe('Param Converters', () => {
-        it('should intercept parameters', (done) => {
+        it('should intercept parameters', async () => {
             Server.addParameterConverter((param: Person) => {
                 if (param.salary === 424242) {
                     param.salary = 434343;
@@ -530,16 +428,12 @@ describe('Data Types Tests', () => {
                 return param;
             }, Person);
             const person = new Person(123, 'Person 123', 35, 424242);
-            request.put({
-                body: JSON.stringify(person),
-                headers: { 'content-type': 'application/json' },
-                url: 'http://localhost:5674/testparams/people/123'
-            }, (error, response, body) => {
-                const receivedPerson = JSON.parse(body);
-                expect(receivedPerson.salary).toEqual(434343);
-                Server.removeParameterConverter(Person);
-                done();
-            });
+            const response = await supertest(app).put('/testparams/people/123')
+                .set('content-type', 'application/json')
+                .send(JSON.stringify(person));
+            const receivedPerson = JSON.parse(response.text);
+            expect(receivedPerson.salary).toEqual(434343);
+            Server.removeParameterConverter(Person);
         });
     });
 
@@ -547,25 +441,17 @@ describe('Data Types Tests', () => {
 
 });
 
-let server: any;
 
-export function startApi(): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
-        const app: express.Application = express();
-        app.set('env', 'test');
-        Server.buildServices(app, TestParamsService, TestReturnService);
-        app.use('/testreturn', (req, res, next) => {
-            if (!res.headersSent) {
-                res.send('handled by middleware');
-            }
-        });
-        server = app.listen(5674, (err?: any) => {
-            if (err) {
-                return reject(err);
-            }
-            resolve();
-        });
+export function startApi(): express.Application {
+    const restApp: express.Application = express();
+    restApp.set('env', 'test');
+    Server.buildServices(restApp, TestParamsService, TestReturnService);
+    restApp.use('/testreturn', (req, res, next) => {
+        if (!res.headersSent) {
+            res.send('handled by middleware');
+        }
     });
+    return restApp;
 }
 
 export function stopApi() {

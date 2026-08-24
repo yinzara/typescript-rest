@@ -1,6 +1,6 @@
 'use strict';
 
-import * as _ from 'lodash';
+import _ from 'lodash';
 import 'reflect-metadata';
 import { ServiceClass, ServiceMethod } from '../server/model/metadata';
 import { ParserType, ServiceProcessor } from '../server/model/server-types';
@@ -198,9 +198,10 @@ export function Accept(...accepts: Array<string>) {
 }
 
 /**
- * A decorator to inform options to pe passed to bodyParser.
- * You can inform any property accepted by
- * [[bodyParser]](https://www.npmjs.com/package/body-parser)
+ * A decorator to inform options to be passed to the body parser.
+ * You can inform any property accepted by the express body parsing
+ * middleware, [express.json()](https://expressjs.com/en/api.html#express.json)
+ * and friends.
  */
 export function BodyOptions(options: any) {
     return new ServiceDecorator('BodyOptions').withProperty('bodyParserOptions', options)

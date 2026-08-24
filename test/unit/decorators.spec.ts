@@ -73,8 +73,8 @@ describe('Decorators', () => {
             const path = 'test-path';
             serviceDecorators.Path(path)(TestService);
 
-            expect(serverContainer.registerServiceClass).toBeCalledTimes(1);
-            expect(serverContainer.registerServiceClass).toBeCalledWith(TestService);
+            expect(serverContainer.registerServiceClass).toHaveBeenCalledTimes(1);
+            expect(serverContainer.registerServiceClass).toHaveBeenCalledWith(TestService);
             expect(serviceClass.path).toEqual(path);
         });
 
@@ -83,7 +83,7 @@ describe('Decorators', () => {
             serviceDecorators.Path(path)(TestService.prototype, 'test',
                 Object.getOwnPropertyDescriptor(TestService.prototype, 'test'));
 
-            expect(serverContainer.registerServiceMethod).toBeCalledTimes(1);
+            expect(serverContainer.registerServiceMethod).toHaveBeenCalledTimes(1);
             expect(serviceMethod.path).toEqual(path);
         });
 
@@ -102,8 +102,8 @@ describe('Decorators', () => {
             const role = 'test-role';
             serviceDecorators.Security(role)(TestService);
 
-            expect(serverContainer.registerServiceClass).toBeCalledWith(TestService);
-            expect(serverContainer.registerServiceClass).toBeCalledTimes(1);
+            expect(serverContainer.registerServiceClass).toHaveBeenCalledWith(TestService);
+            expect(serverContainer.registerServiceClass).toHaveBeenCalledTimes(1);
             expect(serviceClass.authenticator.default).toHaveLength(1);
             expect(serviceClass.authenticator.default).toContain(role);
         });
@@ -113,7 +113,7 @@ describe('Decorators', () => {
             serviceDecorators.Security(role)(TestService.prototype, 'test',
                 Object.getOwnPropertyDescriptor(TestService.prototype, 'test'));
 
-            expect(serverContainer.registerServiceMethod).toBeCalledTimes(1);
+            expect(serverContainer.registerServiceMethod).toHaveBeenCalledTimes(1);
             expect(serviceMethod.authenticator.default).toHaveLength(1);
             expect(serviceMethod.authenticator.default).toContain(role);
         });
@@ -123,7 +123,7 @@ describe('Decorators', () => {
             serviceDecorators.Security(roles)(TestService.prototype, 'test',
                 Object.getOwnPropertyDescriptor(TestService.prototype, 'test'));
 
-            expect(serverContainer.registerServiceMethod).toBeCalledTimes(1);
+            expect(serverContainer.registerServiceMethod).toHaveBeenCalledTimes(1);
             expect(serviceMethod.authenticator.default).toHaveLength(2);
             expect(serviceMethod.authenticator.default).toContain(roles[0]);
             expect(serviceMethod.authenticator.default).toContain(roles[1]);
@@ -134,7 +134,7 @@ describe('Decorators', () => {
             serviceDecorators.Security(role)(TestService.prototype, 'test',
                 Object.getOwnPropertyDescriptor(TestService.prototype, 'test'));
 
-            expect(serverContainer.registerServiceMethod).toBeCalledTimes(1);
+            expect(serverContainer.registerServiceMethod).toHaveBeenCalledTimes(1);
             expect(serviceMethod.authenticator.default).toHaveLength(1);
             expect(serviceMethod.authenticator.default).toContain('*');
         });
@@ -144,7 +144,7 @@ describe('Decorators', () => {
             serviceDecorators.Security(role)(TestService.prototype, 'test',
                 Object.getOwnPropertyDescriptor(TestService.prototype, 'test'));
 
-            expect(serverContainer.registerServiceMethod).toBeCalledTimes(1);
+            expect(serverContainer.registerServiceMethod).toHaveBeenCalledTimes(1);
             expect(serviceMethod.authenticator.default).toHaveLength(1);
             expect(serviceMethod.authenticator.default).toContain('*');
         });
@@ -154,7 +154,7 @@ describe('Decorators', () => {
             serviceDecorators.Security(role)(TestService.prototype, 'test',
                 Object.getOwnPropertyDescriptor(TestService.prototype, 'test'));
 
-            expect(serverContainer.registerServiceMethod).toBeCalledTimes(1);
+            expect(serverContainer.registerServiceMethod).toHaveBeenCalledTimes(1);
             expect(serviceMethod.authenticator.default).toHaveLength(1);
             expect(serviceMethod.authenticator.default).toContain(role);
             expect(Object.keys(serviceMethod.authenticator)).toEqual(['default']);
@@ -166,7 +166,7 @@ describe('Decorators', () => {
             serviceDecorators.Security(role, name)(TestService.prototype, 'test',
                 Object.getOwnPropertyDescriptor(TestService.prototype, 'test'));
 
-            expect(serverContainer.registerServiceMethod).toBeCalledTimes(1);
+            expect(serverContainer.registerServiceMethod).toHaveBeenCalledTimes(1);
             expect(serviceMethod.authenticator[name]).toHaveLength(1);
             expect(serviceMethod.authenticator[name]).toContain(role);
             expect(Object.keys(serviceMethod.authenticator)).toEqual([name]);
@@ -182,7 +182,7 @@ describe('Decorators', () => {
             serviceDecorators.Security(role2, name2)(TestService.prototype, 'test',
                 Object.getOwnPropertyDescriptor(TestService.prototype, 'test'));
 
-            expect(serverContainer.registerServiceMethod).toBeCalledTimes(2);
+            expect(serverContainer.registerServiceMethod).toHaveBeenCalledTimes(2);
             expect(serviceMethod.authenticator[name1]).toHaveLength(1);
             expect(serviceMethod.authenticator[name2]).toHaveLength(1);
             expect(serviceMethod.authenticator[name1]).toContain(role1);
@@ -212,8 +212,8 @@ describe('Decorators', () => {
             it('should add a ServiceProcessor to all methods of a class', async () => {
                 (serviceDecorators as any)[test.name](processor)(TestService);
 
-                expect(serverContainer.registerServiceClass).toBeCalledWith(TestService);
-                expect(serverContainer.registerServiceClass).toBeCalledTimes(1);
+                expect(serverContainer.registerServiceClass).toHaveBeenCalledWith(TestService);
+                expect(serverContainer.registerServiceClass).toHaveBeenCalledTimes(1);
                 expect(serviceClass[test.property]).toHaveLength(1);
                 expect(serviceClass[test.property]).toContain(processor);
             });
@@ -222,7 +222,7 @@ describe('Decorators', () => {
                 (serviceDecorators as any)[test.name](processor)(TestService.prototype, 'test',
                     Object.getOwnPropertyDescriptor(TestService.prototype, 'test'));
 
-                expect(serverContainer.registerServiceMethod).toBeCalledTimes(1);
+                expect(serverContainer.registerServiceMethod).toHaveBeenCalledTimes(1);
                 expect(serviceMethod[test.property]).toHaveLength(1);
                 expect(serviceMethod[test.property]).toContain(processor);
             });
@@ -247,8 +247,8 @@ describe('Decorators', () => {
         it('should add an accepted language to all methods of a class', async () => {
             serviceDecorators.AcceptLanguage('en')(TestService);
 
-            expect(serverContainer.registerServiceClass).toBeCalledWith(TestService);
-            expect(serverContainer.registerServiceClass).toBeCalledTimes(1);
+            expect(serverContainer.registerServiceClass).toHaveBeenCalledWith(TestService);
+            expect(serverContainer.registerServiceClass).toHaveBeenCalledTimes(1);
             expect(serviceClass.languages).toHaveLength(1);
             expect(serviceClass.languages).toContain('en');
         });
@@ -257,7 +257,7 @@ describe('Decorators', () => {
             serviceDecorators.AcceptLanguage('en')(TestService.prototype, 'test',
                 Object.getOwnPropertyDescriptor(TestService.prototype, 'test'));
 
-            expect(serverContainer.registerServiceMethod).toBeCalledTimes(1);
+            expect(serverContainer.registerServiceMethod).toHaveBeenCalledTimes(1);
             expect(serviceMethod.languages).toHaveLength(1);
             expect(serviceMethod.languages).toContain('en');
         });
@@ -272,8 +272,8 @@ describe('Decorators', () => {
         it('should ignore falsey values of accepted languages', async () => {
             serviceDecorators.AcceptLanguage(null, 'en', undefined, 0 as any, false as any, 'pt')(TestService);
 
-            expect(serverContainer.registerServiceClass).toBeCalledWith(TestService);
-            expect(serverContainer.registerServiceClass).toBeCalledTimes(1);
+            expect(serverContainer.registerServiceClass).toHaveBeenCalledWith(TestService);
+            expect(serverContainer.registerServiceClass).toHaveBeenCalledTimes(1);
             expect(serviceClass.languages).toHaveLength(2);
             expect(serviceClass.languages).toContain('en');
             expect(serviceClass.languages).toContain('pt');
@@ -298,8 +298,8 @@ describe('Decorators', () => {
         it('should add an accepted content type to all methods of a class', async () => {
             serviceDecorators.Accept('application/json')(TestService);
 
-            expect(serverContainer.registerServiceClass).toBeCalledWith(TestService);
-            expect(serverContainer.registerServiceClass).toBeCalledTimes(1);
+            expect(serverContainer.registerServiceClass).toHaveBeenCalledWith(TestService);
+            expect(serverContainer.registerServiceClass).toHaveBeenCalledTimes(1);
             expect(serviceClass.accepts).toHaveLength(1);
             expect(serviceClass.accepts).toContain('application/json');
         });
@@ -308,7 +308,7 @@ describe('Decorators', () => {
             serviceDecorators.Accept('application/json')(TestService.prototype, 'test',
                 Object.getOwnPropertyDescriptor(TestService.prototype, 'test'));
 
-            expect(serverContainer.registerServiceMethod).toBeCalledTimes(1);
+            expect(serverContainer.registerServiceMethod).toHaveBeenCalledTimes(1);
             expect(serviceMethod.accepts).toHaveLength(1);
             expect(serviceMethod.accepts).toContain('application/json');
         });
@@ -321,11 +321,11 @@ describe('Decorators', () => {
         });
 
         it('should ignore falsey values of content types', async () => {
-            serviceDecorators.Accept(null, 'application/json', undefined, 0 as any, false as any, 'application/xml')
-                (TestService);
+            serviceDecorators.Accept(
+                null, 'application/json', undefined, 0 as any, false as any, 'application/xml')(TestService);
 
-            expect(serverContainer.registerServiceClass).toBeCalledWith(TestService);
-            expect(serverContainer.registerServiceClass).toBeCalledTimes(1);
+            expect(serverContainer.registerServiceClass).toHaveBeenCalledWith(TestService);
+            expect(serverContainer.registerServiceClass).toHaveBeenCalledTimes(1);
             expect(serviceClass.accepts).toHaveLength(2);
             expect(serviceClass.accepts).toContain('application/json');
             expect(serviceClass.accepts).toContain('application/xml');
@@ -443,8 +443,8 @@ describe('Decorators', () => {
     describe('Abstract Decorator', () => {
         it('should bind a class, markint it as Abstract', async () => {
             serviceDecorators.Abstract(TestService);
-            expect(serverContainer.registerServiceClass).toBeCalledWith(TestService);
-            expect(serverContainer.registerServiceClass).toBeCalledTimes(1);
+            expect(serverContainer.registerServiceClass).toHaveBeenCalledWith(TestService);
+            expect(serverContainer.registerServiceClass).toHaveBeenCalledTimes(1);
             expect(serviceClass.isAbstract).toBeTruthy();
         });
 
@@ -458,8 +458,8 @@ describe('Decorators', () => {
     describe('IgnoreNextMiddlewares Decorator', () => {
         it('should bind a class, making server does not call next function after invocations', async () => {
             serviceDecorators.IgnoreNextMiddlewares(TestService);
-            expect(serverContainer.registerServiceClass).toBeCalledWith(TestService);
-            expect(serverContainer.registerServiceClass).toBeCalledTimes(1);            
+            expect(serverContainer.registerServiceClass).toHaveBeenCalledWith(TestService);
+            expect(serverContainer.registerServiceClass).toHaveBeenCalledTimes(1);            
             expect(serviceClass.ignoreNextMiddlewares).toBeTruthy();
         });
 
@@ -468,7 +468,7 @@ describe('Decorators', () => {
             serviceDecorators.IgnoreNextMiddlewares(TestService.prototype, methodName,
                 Object.getOwnPropertyDescriptor(TestService.prototype, methodName));
 
-            expect(serverContainer.registerServiceMethod).toBeCalledTimes(1);
+            expect(serverContainer.registerServiceMethod).toHaveBeenCalledTimes(1);
             expect(serviceMethod.ignoreNextMiddlewares).toBeTruthy();
         });
 
@@ -497,10 +497,10 @@ describe('Decorators', () => {
                 (methodDecorators as any)[test.name](TestService, methodName,
                     Object.getOwnPropertyDescriptor(TestService, methodName));
 
-                expect(serverContainer.registerServiceMethod).toBeCalledWith(TestService.constructor, methodName);
-                expect(serverContainer.registerServiceMethod).toBeCalledTimes(1);
-                expect(reflectGetOwnMetadata).toBeCalledWith('design:paramtypes', TestService, methodName);
-                expect(reflectGetOwnMetadata).toBeCalledTimes(1);
+                expect(serverContainer.registerServiceMethod).toHaveBeenCalledWith(TestService.constructor, methodName);
+                expect(serverContainer.registerServiceMethod).toHaveBeenCalledTimes(1);
+                expect(reflectGetOwnMetadata).toHaveBeenCalledWith('design:paramtypes', TestService, methodName);
+                expect(reflectGetOwnMetadata).toHaveBeenCalledTimes(1);
 
                 expect(serviceMethod.httpMethod).toEqual(test.method);
             });
@@ -715,18 +715,18 @@ describe('Decorators', () => {
             methodDecorators.GET(TestService, methodName);
             methodDecorators.GET(TestService, methodName);
 
-            expect(reflectGetOwnMetadata).toBeCalledWith('design:paramtypes', TestService, methodName);
-            expect(reflectGetOwnMetadata).toBeCalledTimes(1);
+            expect(reflectGetOwnMetadata).toHaveBeenCalledWith('design:paramtypes', TestService, methodName);
+            expect(reflectGetOwnMetadata).toHaveBeenCalledTimes(1);
 
             expect(serviceMethod.httpMethod).toEqual(HttpMethod.GET);
         });
     });
 
     function validateDecoratedProperty(propertyName: string, paramType: ParamType, name: string) {
-        expect(serverContainer.registerServiceClass).toBeCalledWith(TestService.constructor);
-        expect(serverContainer.registerServiceClass).toBeCalledTimes(1);
-        expect(reflectGetMetadata).toBeCalledWith('design:type', TestService, propertyName);
-        expect(reflectGetMetadata).toBeCalledTimes(1);
+        expect(serverContainer.registerServiceClass).toHaveBeenCalledWith(TestService.constructor);
+        expect(serverContainer.registerServiceClass).toHaveBeenCalledTimes(1);
+        expect(reflectGetMetadata).toHaveBeenCalledWith('design:type', TestService, propertyName);
+        expect(reflectGetMetadata).toHaveBeenCalledTimes(1);
 
         expect(serviceClass.properties.keys()).toContain(propertyName);
         const property = serviceClass.properties.get(propertyName);
@@ -736,10 +736,10 @@ describe('Decorators', () => {
     }
 
     function validateDecoratedParameter(paramName: string, numParameters: number) {
-        expect(serverContainer.registerServiceMethod).toBeCalledWith(TestService.constructor, paramName);
-        expect(serverContainer.registerServiceMethod).toBeCalledTimes(1);
-        expect(reflectGetOwnMetadata).toBeCalledWith('design:paramtypes', TestService, paramName);
-        expect(reflectGetOwnMetadata).toBeCalledTimes(1);
+        expect(serverContainer.registerServiceMethod).toHaveBeenCalledWith(TestService.constructor, paramName);
+        expect(serverContainer.registerServiceMethod).toHaveBeenCalledTimes(1);
+        expect(reflectGetOwnMetadata).toHaveBeenCalledWith('design:paramtypes', TestService, paramName);
+        expect(reflectGetOwnMetadata).toHaveBeenCalledTimes(1);
 
         expect(serviceMethod.parameters).toHaveLength(numParameters);
     }

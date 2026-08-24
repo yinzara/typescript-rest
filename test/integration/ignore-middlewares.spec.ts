@@ -1,6 +1,5 @@
-import * as express from 'express';
-import * as _ from 'lodash';
-import * as request from 'request';
+import express from 'express';
+import supertest from 'supertest';
 import { GET, IgnoreNextMiddlewares, Path, Server } from '../../src/typescript-rest';
 
 @Path('/ignoreEndpoint')
@@ -20,14 +19,12 @@ export class EndpointTestService {
 }
 
 let middlewareCalled: boolean;
+let app: express.Application;
+
 describe('Customized Endpoint Tests', () => {
 
     beforeAll(() => {
-        return startApi();
-    });
-
-    afterAll(() => {
-        stopApi();
+        app = startApi();
     });
 
     beforeEach(() => {
@@ -35,20 +32,16 @@ describe('Customized Endpoint Tests', () => {
     });
 
     describe('@IgnoreNexts Decorator', () => {
-        it('should make the server ignore next middlewares (does not call next())', (done) => {
-            request('http://localhost:5674/ignoreEndpoint/withoutMiddlewares', (error, response, body) => {
-                expect(body).toEqual('OK');
-                expect(middlewareCalled).toBeFalsy();
-                done();
-            });
+        it('should make the server ignore next middlewares (does not call next())', async () => {
+            const response = await supertest(app).get('/ignoreEndpoint/withoutMiddlewares');
+            expect(response.text).toEqual('OK');
+            expect(middlewareCalled).toBeFalsy();
         });
 
-        it('should not prevent the server to call next middlewares for sibbling methods', (done) => {
-            request('http://localhost:5674/ignoreEndpoint/withMiddlewares', (error, response, body) => {
-                expect(body).toEqual('OK');
-                expect(middlewareCalled).toBeTruthy();
-                done();
-            });
+        it('should not prevent the server to call next middlewares for sibbling methods', async () => {
+            const response = await supertest(app).get('/ignoreEndpoint/withMiddlewares');
+            expect(response.text).toEqual('OK');
+            expect(middlewareCalled).toBeTruthy();
         });
     });
 
@@ -61,39 +54,23 @@ describe('Customized Endpoint Tests', () => {
             Server.ignoreNextMiddlewares(false);
         });
 
-        it('should make the server ignore next middlewares for all services', (done) => {
-            request('http://localhost:5674/ignoreEndpoint/withMiddlewares', (error, response, body) => {
-                expect(body).toEqual('OK');
-                expect(middlewareCalled).toBeFalsy();
-                done();
-            });
+        it('should make the server ignore next middlewares for all services', async () => {
+            const response = await supertest(app).get('/ignoreEndpoint/withMiddlewares');
+            expect(response.text).toEqual('OK');
+            expect(middlewareCalled).toBeFalsy();
         });
     });
 
 });
 
-let server: any;
-export function startApi(): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
-        const app: express.Application = express();
-        app.set('env', 'test');
-        Server.buildServices(app, EndpointTestService);
+export function startApi(): express.Application {
+    const restApp: express.Application = express();
+    restApp.set('env', 'test');
+    Server.buildServices(restApp, EndpointTestService);
 
-        app.use((req, res, next) => {
-            middlewareCalled = true;
-            next();
-        });
-        server = app.listen(5674, (err?: any) => {
-            if (err) {
-                return reject(err);
-            }
-            resolve();
-        });
+    restApp.use((req, res, next) => {
+        middlewareCalled = true;
+        next();
     });
-}
-
-export function stopApi() {
-    if (server) {
-        server.close();
-    }
+    return restApp;
 }

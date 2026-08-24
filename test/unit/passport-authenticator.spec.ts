@@ -1,9 +1,10 @@
 jest.mock('passport');
 
-import * as _ from 'lodash';
+import _ from 'lodash';
 import { PassportAuthenticator } from '../../src/authenticator/passport';
-import { wait } from 'test-wait';
-import * as passport from 'passport';
+import passport from 'passport';
+
+const wait = (ms: number = 0) => new Promise<void>(resolve => setTimeout(resolve, ms));
 
 const expressStub: any = 
 {
@@ -43,9 +44,9 @@ describe('PassportAuthenticator', () => {
         const auth: any = new PassportAuthenticator(testStrategy);
 
         expect(Object.keys(auth.options)).toHaveLength(0);
-        expect(use).toBeCalledWith(testStrategy.name, testStrategy);
-        expect(use).toBeCalledTimes(1);
-        expect(authenticate).toBeCalledWith(testStrategy.name, expect.anything());
+        expect(use).toHaveBeenCalledWith(testStrategy.name, testStrategy);
+        expect(use).toHaveBeenCalledTimes(1);
+        expect(authenticate).toHaveBeenCalledWith(testStrategy.name, expect.anything());
         expect(auth.getMiddleware()).toEqual(authenticator);
     });
 
@@ -54,10 +55,10 @@ describe('PassportAuthenticator', () => {
         const auth = new PassportAuthenticator(strategy);
 
         expect(auth).toBeDefined();
-        expect(use).toBeCalledWith('default_strategy', strategy);
-        expect(use).toBeCalledTimes(1);
-        expect(authenticate).toBeCalledWith('default_strategy', expect.anything());
-        expect(authenticate).toBeCalledTimes(1);
+        expect(use).toHaveBeenCalledWith('default_strategy', strategy);
+        expect(use).toHaveBeenCalledTimes(1);
+        expect(authenticate).toHaveBeenCalledWith('default_strategy', expect.anything());
+        expect(authenticate).toHaveBeenCalledTimes(1);
     });
 
     it('should be able to create a simple authenticator with custom auth options', async () => {
@@ -70,8 +71,8 @@ describe('PassportAuthenticator', () => {
         const auth: any = new PassportAuthenticator(testStrategy, options);
 
         expect(auth.options).toEqual(options);
-        expect(authenticate).toBeCalledWith(options.strategyName, options.authOptions);
-        expect(authenticate).toBeCalledTimes(1);
+        expect(authenticate).toHaveBeenCalledWith(options.strategyName, options.authOptions);
+        expect(authenticate).toHaveBeenCalledTimes(1);
     });
 
     it('should be able to initialize a sessionless authenticator', async () => {
@@ -83,16 +84,17 @@ describe('PassportAuthenticator', () => {
         const auth = new PassportAuthenticator(testStrategy, options);
         auth.initialize(expressStub);
 
-        expect(initialize).toBeCalledTimes(1);
-        expect(expressStub.use).toBeCalledTimes(1);
-        expect(expressStub.use).toBeCalledWith(initializer);
-        expect(session).toBeCalledTimes(0);
+        expect(initialize).toHaveBeenCalledTimes(1);
+        expect(expressStub.use).toHaveBeenCalledTimes(1);
+        expect(expressStub.use).toHaveBeenCalledWith(initializer);
+        expect(session).toHaveBeenCalledTimes(0);
     });
 
     describe('Session tests', () => {
         const serializationCallbackStub = jest.fn();
         const deserializationCallbackStub = jest.fn();
         const options = {
+            authOptions: { session: true },
             deserializeUser: jest.fn(),
             serializeUser: jest.fn()
         };
@@ -119,17 +121,17 @@ describe('PassportAuthenticator', () => {
             const auth = new PassportAuthenticator(testStrategy, options);
             auth.initialize(expressStub);
             await wait(1);
-            expect(initialize).toBeCalledTimes(1);
-            expect(expressStub.use).toBeCalledTimes(2);
-            expect(expressStub.use).toBeCalledWith(initializer);
-            expect(session).toBeCalledTimes(1);
-            expect(expressStub.use).toBeCalledWith(sessionHandler);
-            expect(serializeUser).toBeCalledTimes(1);
-            expect(deserializeUser).toBeCalledTimes(1);
-            expect(serializationCallbackStub).toBeCalledWith(null, serialization);
-            expect(serializationCallbackStub).toBeCalledTimes(1);
-            expect(deserializationCallbackStub).toBeCalledWith(null, user);
-            expect(deserializationCallbackStub).toBeCalledTimes(1);
+            expect(initialize).toHaveBeenCalledTimes(1);
+            expect(expressStub.use).toHaveBeenCalledTimes(2);
+            expect(expressStub.use).toHaveBeenCalledWith(initializer);
+            expect(session).toHaveBeenCalledTimes(1);
+            expect(expressStub.use).toHaveBeenCalledWith(sessionHandler);
+            expect(serializeUser).toHaveBeenCalledTimes(1);
+            expect(deserializeUser).toHaveBeenCalledTimes(1);
+            expect(serializationCallbackStub).toHaveBeenCalledWith(null, serialization);
+            expect(serializationCallbackStub).toHaveBeenCalledTimes(1);
+            expect(deserializationCallbackStub).toHaveBeenCalledWith(null, user);
+            expect(deserializationCallbackStub).toHaveBeenCalledTimes(1);
         });
 
         it('should be able to fail when serialization fail', async () => {
@@ -148,10 +150,10 @@ describe('PassportAuthenticator', () => {
             const auth = new PassportAuthenticator(testStrategy, options);
             auth.initialize(expressStub);
             await wait(1);
-            expect(serializationCallbackStub).toBeCalledWith(error, null);
-            expect(serializationCallbackStub).toBeCalledTimes(1);
-            expect(deserializationCallbackStub).toBeCalledWith(error, null);
-            expect(deserializationCallbackStub).toBeCalledTimes(1);
+            expect(serializationCallbackStub).toHaveBeenCalledWith(error, null);
+            expect(serializationCallbackStub).toHaveBeenCalledTimes(1);
+            expect(deserializationCallbackStub).toHaveBeenCalledWith(error, null);
+            expect(deserializationCallbackStub).toHaveBeenCalledTimes(1);
         });
     });
 

@@ -21,7 +21,7 @@ describe('Server', () => {
         const secret = 'my-secret';
         Server.setCookiesSecret(secret);
 
-        expect(get).toBeCalledTimes(1);
+        expect(get).toHaveBeenCalledTimes(1);
         expect(server.cookiesSecret).toEqual(secret);
     });
 
@@ -29,7 +29,7 @@ describe('Server', () => {
         const decoder = jest.fn();
         Server.setCookiesDecoder(decoder);
 
-        expect(get).toBeCalledTimes(1);
+        expect(get).toHaveBeenCalledTimes(1);
         expect(server.cookiesDecoder).toEqual(decoder);
     });
 
@@ -37,7 +37,7 @@ describe('Server', () => {
         const target = './target-dir';
         Server.setFileDest(target);
 
-        expect(get).toBeCalledTimes(1);
+        expect(get).toHaveBeenCalledTimes(1);
         expect(server.fileDest).toEqual(target);
     });
 
@@ -45,7 +45,7 @@ describe('Server', () => {
         const filter = jest.fn();
         Server.setFileFilter(filter);
 
-        expect(get).toBeCalledTimes(1);
+        expect(get).toHaveBeenCalledTimes(1);
         expect(server.fileFilter).toEqual(filter);
     });
 
@@ -61,7 +61,7 @@ describe('Server', () => {
         };
         Server.setFileLimits(limits);
 
-        expect(get).toBeCalledTimes(1);
+        expect(get).toHaveBeenCalledTimes(1);
         expect(server.fileLimits).toEqual(limits);
     });
 
@@ -78,7 +78,7 @@ describe('Server', () => {
         Server.addParameterConverter(null, null);
         Server.removeParameterConverter(null);
         Server.ignoreNextMiddlewares(false);
-        expect(get).toBeCalledTimes(0);
+        expect(get).toHaveBeenCalledTimes(0);
         expect(Server.isImmutable()).toBeTruthy();
     });
 

@@ -1,12 +1,11 @@
 'use strict';
 
-import * as bodyParser from 'body-parser';
-import * as cookieParser from 'cookie-parser';
-import * as debug from 'debug';
-import * as express from 'express';
+import cookieParser from 'cookie-parser';
+import debug from 'debug';
+import express from 'express';
 import { NextFunction, Request, Response } from 'express';
-import * as _ from 'lodash';
-import * as multer from 'multer';
+import _ from 'lodash';
+import multer from 'multer';
 import * as Errors from './model/errors';
 import { ServiceClass, ServiceMethod } from './model/metadata';
 import {
@@ -14,6 +13,9 @@ import {
     ParserType, ServiceAuthenticator, ServiceContext, ServiceFactory
 } from './model/server-types';
 import { ServiceInvoker } from './service-invoker';
+
+type RouterMethod = 'get' | 'post' | 'put' | 'delete' | 'head' | 'options' | 'patch';
+type RouteRegistrar = (path: string, ...handlers: Array<express.RequestHandler>) => void;
 
 export class DefaultServiceFactory implements ServiceFactory {
     public create(serviceClass: any) {
@@ -30,6 +32,16 @@ export class ServerContainer {
     }
 
     private static instance: ServerContainer = new ServerContainer();
+
+    private static readonly routerMethods: Map<HttpMethod, RouterMethod> = new Map<HttpMethod, RouterMethod>([
+        [HttpMethod.GET, 'get'],
+        [HttpMethod.POST, 'post'],
+        [HttpMethod.PUT, 'put'],
+        [HttpMethod.DELETE, 'delete'],
+        [HttpMethod.HEAD, 'head'],
+        [HttpMethod.OPTIONS, 'options'],
+        [HttpMethod.PATCH, 'patch']
+    ]);
 
     public cookiesSecret: string;
     public cookiesDecoder: (val: string) => string;
@@ -152,36 +164,20 @@ export class ServerContainer {
             this.resolveProperties(serviceClass, serviceMethod);
         }
 
-        let args: Array<any> = [serviceMethod.resolvedPath];
-        args = args.concat(this.buildSecurityMiddlewares(serviceClass, serviceMethod));
-        args = args.concat(this.buildParserMiddlewares(serviceClass, serviceMethod));
-        args.push(this.buildServiceMiddleware(serviceMethod, serviceClass));
-        switch (serviceMethod.httpMethod) {
-            case HttpMethod.GET:
-                this.router.get.apply(this.router, args);
-                break;
-            case HttpMethod.POST:
-                this.router.post.apply(this.router, args);
-                break;
-            case HttpMethod.PUT:
-                this.router.put.apply(this.router, args);
-                break;
-            case HttpMethod.DELETE:
-                this.router.delete.apply(this.router, args);
-                break;
-            case HttpMethod.HEAD:
-                this.router.head.apply(this.router, args);
-                break;
-            case HttpMethod.OPTIONS:
-                this.router.options.apply(this.router, args);
-                break;
-            case HttpMethod.PATCH:
-                this.router.patch.apply(this.router, args);
-                break;
+        const handlers: Array<express.RequestHandler> = [
+            ...this.buildSecurityMiddlewares(serviceClass, serviceMethod),
+            ...this.buildParserMiddlewares(serviceClass, serviceMethod),
+            this.buildServiceMiddleware(serviceMethod, serviceClass)
+        ];
+        this.getRouteRegistrar(serviceMethod)(serviceMethod.resolvedPath, ...handlers);
+    }
 
-            default:
-                throw Error(`Invalid http method for service [${serviceMethod.resolvedPath}]`);
+    private getRouteRegistrar(serviceMethod: ServiceMethod): RouteRegistrar {
+        const routerMethod = ServerContainer.routerMethods.get(serviceMethod.httpMethod);
+        if (!routerMethod) {
+            throw Error(`Invalid http method for service [${serviceMethod.resolvedPath}]`);
         }
+        return (this.router[routerMethod] as RouteRegistrar).bind(this.router);
     }
 
     private resolveAllPaths() {
@@ -421,23 +417,21 @@ export class ServerContainer {
     }
 
     private buildFormParserMiddleware(bodyParserOptions: any) {
-        let middleware: express.RequestHandler;
         if (!bodyParserOptions) {
             bodyParserOptions = { extended: true };
         }
         this.debugger.build('Creating form body parser with options %j.', bodyParserOptions);
-        middleware = bodyParser.urlencoded(bodyParserOptions);
-        return middleware;
+        return express.urlencoded(bodyParserOptions);
     }
 
     private buildJsonBodyParserMiddleware(bodyParserOptions: any) {
         let middleware: express.RequestHandler;
         this.debugger.build('Creating json body parser with options %j.', bodyParserOptions || {});
         if (bodyParserOptions) {
-            middleware = bodyParser.json(bodyParserOptions);
+            middleware = express.json(bodyParserOptions);
         }
         else {
-            middleware = bodyParser.json();
+            middleware = express.json();
         }
         return middleware;
     }
@@ -446,10 +440,10 @@ export class ServerContainer {
         let middleware: express.RequestHandler;
         this.debugger.build('Creating text body parser with options %j.', bodyParserOptions || {});
         if (bodyParserOptions) {
-            middleware = bodyParser.text(bodyParserOptions);
+            middleware = express.text(bodyParserOptions);
         }
         else {
-            middleware = bodyParser.text();
+            middleware = express.text();
         }
         return middleware;
     }
@@ -458,24 +452,18 @@ export class ServerContainer {
         let middleware: express.RequestHandler;
         this.debugger.build('Creating raw body parser with options %j.', bodyParserOptions || {});
         if (bodyParserOptions) {
-            middleware = bodyParser.raw(bodyParserOptions);
+            middleware = express.raw(bodyParserOptions);
         }
         else {
-            middleware = bodyParser.raw();
+            middleware = express.raw();
         }
         return middleware;
     }
 
     private buildCookieParserMiddleware() {
-        const args = [];
-        if (this.cookiesSecret) {
-            args.push(this.cookiesSecret);
-        }
-        if (this.cookiesDecoder) {
-            args.push({ decode: this.cookiesDecoder });
-        }
-        this.debugger.build('Creating cookie parser with options %j.', args);
-        const middleware = cookieParser.apply(this, args);
-        return middleware;
+        const options = this.cookiesDecoder ? { decode: this.cookiesDecoder } : undefined;
+        this.debugger.build('Creating cookie parser with secret %j and options %j.',
+            !!this.cookiesSecret, options);
+        return cookieParser(this.cookiesSecret, options);
     }
 }

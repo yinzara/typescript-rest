@@ -2,12 +2,13 @@
     "compilerOptions": {
         "declaration": true,
         "experimentalDecorators": true,
+        "isolatedModules": true,
         "emitDecoratorMetadata": true,
         "lib": [
-            "es6",
-            "dom"
+            "ES2023"
         ],
-        "module": "commonjs",
+        "module": "node16",
+        "moduleResolution": "node16",
         "newLine": "LF",
         "noFallthroughCasesInSwitch": true,
         "noImplicitAny": true,
@@ -16,9 +17,14 @@
         "noUnusedParameters": false,
         "noUnusedLocals": true,
         "outDir": "dist",
+        "rootDir": "src",
         "sourceMap": true,
         "strictNullChecks": false,
-        "target": "es6"
+        "target": "ES2022",
+        "useDefineForClassFields": false,
+        "types": [
+            "node"
+        ]
     },
     "include": [
         "src/**/*.ts"

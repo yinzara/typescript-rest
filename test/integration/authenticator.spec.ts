@@ -1,8 +1,8 @@
-import * as express from 'express';
-import * as jwt from 'jsonwebtoken';
-import * as _ from 'lodash';
+import express from 'express';
+import jwt from 'jsonwebtoken';
+import _ from 'lodash';
 import { ExtractJwt, Strategy, StrategyOptions } from 'passport-jwt';
-import * as request from 'request';
+import supertest from 'supertest';
 import { Context, GET, PassportAuthenticator, Path, POST, PUT, Security, Server, ServiceContext } from '../../src/typescript-rest';
 
 
@@ -87,180 +87,115 @@ export class AuthenticateMethods {
     }
 }
 
+let app: express.Application;
+
 describe('Authenticator Tests', () => {
     beforeAll(() => {
-        return startApi();
-    });
-
-    afterAll(function () {
-        stopApi();
+        app = startApi();
     });
 
     describe('Authorization', () => {
-        it('should not authorize without header', (done) => {
-            request('http://localhost:5674/authorization', (error, response, body) => {
-                expect(response.statusCode).toEqual(401);
-                expect(body).toEqual('Unauthorized');
-                done();
-            });
+        it('should not authorize without header', async () => {
+            const response = await supertest(app).get('/authorization');
+            expect(response.status).toEqual(401);
+            expect(response.text).toEqual('Unauthorized');
         });
-        it('should not authorize with wrong token', (done) => {
-            request('http://localhost:5674/authorization', {
-                headers: {
-                    'Authorization': 'Bearer xx'
-                }
-            }, (error, response, body) => {
-                expect(response.statusCode).toEqual(401);
-                expect(body).toEqual('Unauthorized');
-                done();
-            });
+        it('should not authorize with wrong token', async () => {
+            const response = await supertest(app).get('/authorization')
+            .set('Authorization', 'Bearer xx');
+            expect(response.status).toEqual(401);
+            expect(response.text).toEqual('Unauthorized');
         });
-        it('should authorize with header', (done) => {
-            request('http://localhost:5674/authorization', {
-                headers: {
-                    'Authorization': `Bearer ${generateJwt()}`
-                }
-            }, (error, response, body) => {
-                expect(response.statusCode).toEqual(200);
-                expect(JSON.parse(body)).toMatchObject({ username: 'admin' });
-                done();
-            });
+        it('should authorize with header', async () => {
+            const response = await supertest(app).get('/authorization')
+            .set('Authorization', `Bearer ${generateJwt()}`);
+            expect(response.status).toEqual(200);
+            expect(JSON.parse(response.text)).toMatchObject({ username: 'admin' });
         });
     });
 
     describe('Authorization with role', () => {
-        it('should not authorize without header', (done) => {
-            request('http://localhost:5674/authorization/with/role', (error, response, body) => {
-                expect(response.statusCode).toEqual(401);
-                expect(body).toEqual('Unauthorized');
-                done();
-            });
+        it('should not authorize without header', async () => {
+            const response = await supertest(app).get('/authorization/with/role');
+            expect(response.status).toEqual(401);
+            expect(response.text).toEqual('Unauthorized');
         });
-        it('should not authorize with wrong token', (done) => {
-            request('http://localhost:5674/authorization/with/role', {
-                headers: {
-                    'Authorization': 'Bearer xx'
-                }
-            }, (error, response, body) => {
-                expect(response.statusCode).toEqual(401);
-                expect(body).toEqual('Unauthorized');
-                done();
-            });
+        it('should not authorize with wrong token', async () => {
+            const response = await supertest(app).get('/authorization/with/role')
+            .set('Authorization', 'Bearer xx');
+            expect(response.status).toEqual(401);
+            expect(response.text).toEqual('Unauthorized');
         });
-        it('should authorize with header', (done) => {
-            request('http://localhost:5674/authorization/with/role', {
-                headers: {
-                    'Authorization': `Bearer ${generateJwt()}`
-                }
-            }, (error, response, body) => {
-                expect(response.statusCode).toEqual(200);
-                const user = JSON.parse(body);
-                expect(user).toMatchObject({ username: 'admin' });
-                expect(user).toMatchObject({ strategy: 'default' });
-                done();
-            });
+        it('should authorize with header', async () => {
+            const response = await supertest(app).get('/authorization/with/role')
+            .set('Authorization', `Bearer ${generateJwt()}`);
+            expect(response.status).toEqual(200);
+            const user = JSON.parse(response.text);
+            expect(user).toMatchObject({ username: 'admin' });
+            expect(user).toMatchObject({ strategy: 'default' });
         });
     });
 
     describe('Multiple Authorizations registered', () => {
-        it('should authorize with the correct autorization', (done) => {
-            request('http://localhost:5674/authorization/secondAuthenticator', {
-                headers: {
-                    'Authorization': `Bearer ${generateJwt()}`
-                }
-            }, (error, response, body) => {
-                expect(response.statusCode).toEqual(200);
-                const user = JSON.parse(body);
-                expect(user).toMatchObject({ username: 'admin' });
-                expect(user).toMatchObject({ strategy: 'second' });
-                done();
-            });
+        it('should authorize with the correct autorization', async () => {
+            const response = await supertest(app).get('/authorization/secondAuthenticator')
+            .set('Authorization', `Bearer ${generateJwt()}`);
+            expect(response.status).toEqual(200);
+            const user = JSON.parse(response.text);
+            expect(user).toMatchObject({ username: 'admin' });
+            expect(user).toMatchObject({ strategy: 'second' });
         });
     });
 
     describe('Authorization without role', () => {
-        it('should not authorize without header', (done) => {
-            request('http://localhost:5674/authorization/without/role', (error, response, body) => {
-                expect(response.statusCode).toEqual(401);
-                expect(body).toEqual('Unauthorized');
-                done();
-            });
+        it('should not authorize without header', async () => {
+            const response = await supertest(app).get('/authorization/without/role');
+            expect(response.status).toEqual(401);
+            expect(response.text).toEqual('Unauthorized');
         });
-        it('should not authorize with wrong token', (done) => {
-            request('http://localhost:5674/authorization/without/role', {
-                headers: {
-                    'Authorization': 'Bearer xx'
-                }
-            }, (error, response, body) => {
-                expect(response.statusCode).toEqual(401);
-                expect(body).toEqual('Unauthorized');
-                done();
-            });
+        it('should not authorize with wrong token', async () => {
+            const response = await supertest(app).get('/authorization/without/role')
+            .set('Authorization', 'Bearer xx');
+            expect(response.status).toEqual(401);
+            expect(response.text).toEqual('Unauthorized');
         });
-        it('should not authorize with header and without appropiate role', (done) => {
-            request('http://localhost:5674/authorization/without/role', {
-                headers: {
-                    'Authorization': `Bearer ${generateJwt()}`
-                }
-            }, (error, response, body) => {
-                expect(response.statusCode).toEqual(403);
-                done();
-            });
+        it('should not authorize with header and without appropiate role', async () => {
+            const response = await supertest(app).get('/authorization/without/role')
+            .set('Authorization', `Bearer ${generateJwt()}`);
+            expect(response.status).toEqual(403);
         });
     });
 
     describe('Authorization for methods', () => {
-        it('should work in "public" methods', (done) => {
-            request('http://localhost:5674/authorization/methods/public', (error, response, body) => {
-                expect(response.statusCode).toEqual(200);
-                expect(body).toEqual('OK');
-                done();
-            });
+        it('should work in "public" methods', async () => {
+            const response = await supertest(app).get('/authorization/methods/public');
+            expect(response.status).toEqual(200);
+            expect(response.text).toEqual('OK');
         });
-        it('should not authorize without header', (done) => {
-            request.post('http://localhost:5674/authorization/methods/profile',
-                (error, response, body) => {
-                    expect(response.statusCode).toEqual(401);
-                    done();
-                });
+        it('should not authorize without header', async () => {
+            const response = await supertest(app).post('/authorization/methods/profile');
+            expect(response.status).toEqual(401);
         });
-        it('should not authorize with wrong token', (done) => {
-            request.post('http://localhost:5674/authorization/methods/profile', {
-                headers: {
-                    'Authorization': 'Bearer xx'
-                }
-            }, (error, response, body) => {
-                expect(response.statusCode).toEqual(401);
-                done();
-            });
+        it('should not authorize with wrong token', async () => {
+            const response = await supertest(app).post('/authorization/methods/profile')
+            .set('Authorization', 'Bearer xx');
+            expect(response.status).toEqual(401);
         });
-        it('should authorize with header', (done) => {
-            request.post('http://localhost:5674/authorization/methods/profile', {
-                headers: {
-                    'Authorization': `Bearer ${generateJwt()}`
-                }
-            }, (error, response, body) => {
-                expect(response.statusCode).toEqual(200);
-                expect(JSON.parse(body)).toMatchObject({ username: 'admin' });
-                done();
-            });
+        it('should authorize with header', async () => {
+            const response = await supertest(app).post('/authorization/methods/profile')
+            .set('Authorization', `Bearer ${generateJwt()}`);
+            expect(response.status).toEqual(200);
+            expect(JSON.parse(response.text)).toMatchObject({ username: 'admin' });
         });
-        it('should authorize in GET method', (done) => {
-            request('http://localhost:5674/authorization/methods/profile', (error, response, body) => {
-                expect(response.statusCode).toEqual(200);
-                expect(body).toEqual('OK');
-                done();
-            });
+        it('should authorize in GET method', async () => {
+            const response = await supertest(app).get('/authorization/methods/profile');
+            expect(response.status).toEqual(200);
+            expect(response.text).toEqual('OK');
         });
-        it('should not authorize in PUT method', (done) => {
-            request.put('http://localhost:5674/authorization/methods/profile', {
-                headers: {
-                    'Authorization': `Bearer ${generateJwt()}`
-                }
-            }, (error, response, body) => {
-                expect(response.statusCode).toEqual(403);
-                done();
-            });
+        it('should not authorize in PUT method', async () => {
+            const response = await supertest(app).put('/authorization/methods/profile')
+            .set('Authorization', `Bearer ${generateJwt()}`);
+            expect(response.status).toEqual(403);
         });
     });
 });
@@ -322,22 +257,14 @@ function generateJwt() {
     return jwt.sign(user, Buffer.from(JWT_SECRET, 'base64'), { algorithm: 'HS512' });
 }
 
-let server: any;
 
-function startApi(): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
-        const app: express.Application = express();
-        app.set('env', 'test');
-        configureAuthenticator();
-        Server.buildServices(app, AuthenticatePath, AuthenticateRole,
-            AuthenticateWithoutRole, AuthenticateMethods, MultipleAuthenticateRole);
-        server = app.listen(5674, (err?: any) => {
-            if (err) {
-                return reject(err);
-            }
-            resolve();
-        });
-    });
+export function startApi(): express.Application {
+    const restApp: express.Application = express();
+    restApp.set('env', 'test');
+    configureAuthenticator();
+    Server.buildServices(restApp, AuthenticatePath, AuthenticateRole,
+        AuthenticateWithoutRole, AuthenticateMethods, MultipleAuthenticateRole);
+    return restApp;
 }
 
 export function stopApi() {

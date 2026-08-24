@@ -29,8 +29,8 @@ describe('ServerConfig', () => {
         readJSONSync.mockReturnValue(config);
         ServerConfig.configure();
 
-        expect(registerServiceFactory).toBeCalledWith(config.serviceFactory);
-        expect(registerServiceFactory).toBeCalledTimes(1);
+        expect(registerServiceFactory).toHaveBeenCalledWith(config.serviceFactory);
+        expect(registerServiceFactory).toHaveBeenCalledTimes(1);
     });
 
     it('should use a custom service factory configured with relative path', async () => {
@@ -45,19 +45,19 @@ describe('ServerConfig', () => {
         readJSONSync.mockReturnValue(config);
         ServerConfig.configure();
 
-        expect(registerServiceFactory).toBeCalledWith(expectedServicePath);
-        expect(registerServiceFactory).toBeCalledTimes(1);
+        expect(registerServiceFactory).toHaveBeenCalledWith(expectedServicePath);
+        expect(registerServiceFactory).toHaveBeenCalledTimes(1);
     });
 
     it('should not use ioc if an error occur while searching for config file', async () => {
-        const consoleError = jest.spyOn(console, "error");
+        const consoleError = jest.spyOn(console, 'error');
         try {
-            const error = new Error("Some error");
+            const error = new Error('Some error');
             existsSync.mockImplementation(() => { throw error; });
             ServerConfig.configure();
 
-            expect(registerServiceFactory).toBeCalledTimes(0);
-            expect(consoleError).toBeCalledWith(error);
+            expect(registerServiceFactory).toHaveBeenCalledTimes(0);
+            expect(consoleError).toHaveBeenCalledWith(error);
         } finally {
             consoleError.mockReset();
         }

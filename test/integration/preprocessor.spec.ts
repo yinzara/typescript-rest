@@ -1,6 +1,6 @@
-import * as express from 'express';
-import * as _ from 'lodash';
-import * as request from 'request';
+import express from 'express';
+import _ from 'lodash';
+import supertest from 'supertest';
 import { ContextRequest, Errors, Path, POST, PreProcessor, Server } from '../../src/typescript-rest';
 
 @Path('preprocessor')
@@ -55,81 +55,49 @@ interface PreprocessedRequest extends express.Request {
     asyncPreproocessor2: boolean;
 }
 
+let app: express.Application;
+
 describe('Preprocessor Tests', () => {
 
     beforeAll(() => {
-        return startApi();
-    });
-
-    afterAll(() => {
-        stopApi();
+        app = startApi();
     });
 
     describe('Synchronous Preprocessors', () => {
-        it('should validate before handling the request', (done) => {
-            request.post({
-                body: JSON.stringify({ valid: true }),
-                headers: { 'content-type': 'application/json' },
-                url: 'http://localhost:5674/preprocessor/test'
-            }, (error, response, body) => {
-                expect(body).toEqual('true');
-                done();
-            });
+        it('should validate before handling the request', async () => {
+            const response = await supertest(app).post('/preprocessor/test')
+                .set('content-type', 'application/json')
+                .send(JSON.stringify({ valid: true }));
+            expect(response.text).toEqual('true');
         });
-        it('should fail validation when body is invalid', (done) => {
-            request.post({
-                body: JSON.stringify({}),
-                headers: { 'content-type': 'application/json' },
-                url: 'http://localhost:5674/preprocessor/test'
-            }, (error, response, body) => {
-                expect(response.statusCode).toEqual(400);
-                done();
-            });
+        it('should fail validation when body is invalid', async () => {
+            const response = await supertest(app).post('/preprocessor/test')
+                .set('content-type', 'application/json')
+                .send(JSON.stringify({}));
+            expect(response.status).toEqual(400);
         });
     });
 
     describe('Assynchronous Preprocessors', () => {
-        it('should validate before handling the request', (done) => {
-            request.post({
-                body: JSON.stringify({ valid: true, asyncValid: true }),
-                headers: { 'content-type': 'application/json' },
-                url: 'http://localhost:5674/preprocessor/asynctest'
-            }, (error, response, body) => {
-                expect(body).toEqual('true');
-                done();
-            });
+        it('should validate before handling the request', async () => {
+            const response = await supertest(app).post('/preprocessor/asynctest')
+                .set('content-type', 'application/json')
+                .send(JSON.stringify({ valid: true, asyncValid: true }));
+            expect(response.text).toEqual('true');
         });
-        it('should fail validation when body is invalid', (done) => {
-            request.post({
-                body: JSON.stringify({ valid: true }),
-                headers: { 'content-type': 'application/json' },
-                url: 'http://localhost:5674/preprocessor/asynctest'
-            }, (error, response, body) => {
-                expect(response.statusCode).toEqual(400);
-                done();
-            });
+        it('should fail validation when body is invalid', async () => {
+            const response = await supertest(app).post('/preprocessor/asynctest')
+                .set('content-type', 'application/json')
+                .send(JSON.stringify({ valid: true }));
+            expect(response.status).toEqual(400);
         });
     });
 });
 
-let server: any;
 
-function startApi(): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
-        const app: express.Application = express();
-        app.set('env', 'test');
-        Server.buildServices(app, PreprocessedService);
-        server = app.listen(5674, (err?: any) => {
-            if (err) {
-                return reject(err);
-            }
-            resolve();
-        });
-    });
-}
-
-function stopApi() {
-    if (server) {
-        server.close();
-    }
+export function startApi(): express.Application {
+    const restApp: express.Application = express();
+    restApp.set('env', 'test');
+    Server.buildServices(restApp, PreprocessedService);
+    return restApp;
 }

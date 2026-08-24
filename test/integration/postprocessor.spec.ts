@@ -1,6 +1,5 @@
-import * as express from 'express';
-import * as _ from 'lodash';
-import * as request from 'request';
+import express from 'express';
+import supertest from 'supertest';
 import { Path, POST, PostProcessor, Server } from '../../src/typescript-rest';
 
 @Path('postprocessor')
@@ -38,62 +37,39 @@ async function asyncPostprocessor2(req: express.Request, res: express.Response) 
     res.setHeader('x-asyncpostprocessor2', '1');
 }
 
+let app: express.Application;
+
 describe('Postprocessor Tests', () => {
 
     beforeAll(() => {
-        return startApi();
-    });
-
-    afterAll(() => {
-        stopApi();
+        app = startApi();
     });
 
     describe('Synchronous Postrocessors', () => {
-        it('should run after handling the request', (done) => {
-            request.post({
-                headers: { 'content-type': 'application/json' },
-                url: 'http://localhost:5674/postprocessor/test'
-            }, (error, response, body) => {
-                expect(response.headers['x-postprocessor1']).toEqual('1');
-                expect(response.headers['x-postprocessor2']).toEqual('1');
-                done();
-            });
+        it('should run after handling the request', async () => {
+            const response = await supertest(app)
+                .post('/postprocessor/test')
+                    .set('content-type', 'application/json');
+            expect(response.headers['x-postprocessor1']).toEqual('1');
+            expect(response.headers['x-postprocessor2']).toEqual('1');
         });
     });
 
     describe('Assynchronous Postprocessors', () => {
-        it('should run after handling the request', (done) => {
-            request.post({
-                headers: { 'content-type': 'application/json' },
-                url: 'http://localhost:5674/postprocessor/asynctest'
-            }, (error, response, body) => {
-                expect(response.headers['x-postprocessor1']).toEqual('1');
-                expect(response.headers['x-asyncpostprocessor1']).toEqual('1');
-                expect(response.headers['x-asyncpostprocessor2']).toEqual('1');
-                done();
-            });
+        it('should run after handling the request', async () => {
+            const response = await supertest(app)
+                .post('/postprocessor/asynctest')
+                    .set('content-type', 'application/json');
+            expect(response.headers['x-postprocessor1']).toEqual('1');
+            expect(response.headers['x-asyncpostprocessor1']).toEqual('1');
+            expect(response.headers['x-asyncpostprocessor2']).toEqual('1');
         });
     });
 });
 
-let server: any;
-
-function startApi(): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
-        const app: express.Application = express();
-        app.set('env', 'test');
-        Server.buildServices(app, PostProcessedService);
-        server = app.listen(5674, (err?: any) => {
-            if (err) {
-                return reject(err);
-            }
-            resolve();
-        });
-    });
-}
-
-function stopApi() {
-    if (server) {
-        server.close();
-    }
+function startApi(): express.Application {
+    const restApp: express.Application = express();
+    restApp.set('env', 'test');
+    Server.buildServices(restApp, PostProcessedService);
+    return restApp;
 }

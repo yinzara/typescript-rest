@@ -1,6 +1,5 @@
-import * as express from 'express';
-import * as _ from 'lodash';
-import * as request from 'request';
+import express from 'express';
+import supertest from 'supertest';
 import { Inject, OnlyInstantiableByContainer } from 'typescript-ioc';
 import { DefaultServiceFactory, GET, Path, Server } from '../../src/typescript-rest';
 
@@ -53,63 +52,41 @@ export class IoCService3 {
 export class IoCService4 extends IoCService2 {
 }
 
+let app: express.Application;
+
 describe('IoC Tests', () => {
 
     beforeAll(() => {
-        return startApi();
+        app = startApi();
     });
 
     afterAll(() => {
-        stopApi();
+        Server.registerServiceFactory(new DefaultServiceFactory());
     });
 
     describe('Server integrated with typescript-ioc', () => {
-        it('should use IoC container to instantiate the services', (done) => {
-            request('http://localhost:5674/ioctest', (error, response, body) => {
-                expect(body).toEqual('OK');
-                done();
-            });
+        it('should use IoC container to instantiate the services', async () => {
+            const response = await supertest(app).get('/ioctest');
+            expect(response.text).toEqual('OK');
         });
-        it('should use IoC container to instantiate the services, does not carrying about the decorators order', (done) => {
-            request('http://localhost:5674/ioctest2', (error, response, body) => {
-                expect(body).toEqual('OK');
-                done();
-            });
+        it('should use IoC container to instantiate the services, does not carrying about the decorators order', async () => {
+            const response = await supertest(app).get('/ioctest2');
+            expect(response.text).toEqual('OK');
         });
-        it('should use IoC container to instantiate the services with injected params on constructor', (done) => {
-            request('http://localhost:5674/ioctest3', (error, response, body) => {
-                expect(body).toEqual('OK');
-                done();
-            });
+        it('should use IoC container to instantiate the services with injected params on constructor', async () => {
+            const response = await supertest(app).get('/ioctest3');
+            expect(response.text).toEqual('OK');
         });
-        it('should use IoC container to instantiate the services with superclasses', (done) => {
-            request('http://localhost:5674/ioctest4', (error, response, body) => {
-                expect(body).toEqual('OK');
-                done();
-            });
+        it('should use IoC container to instantiate the services with superclasses', async () => {
+            const response = await supertest(app).get('/ioctest4');
+            expect(response.text).toEqual('OK');
         });
     });
 });
 
-let server: any;
-
-function startApi(): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
-        const app: express.Application = express();
-        app.set('env', 'test');
-        Server.buildServices(app, IoCService, IoCService2, IoCService3, IoCService4);
-        server = app.listen(5674, (err?: any) => {
-            if (err) {
-                return reject(err);
-            }
-            resolve();
-        });
-    });
-}
-
-function stopApi() {
-    if (server) {
-        Server.registerServiceFactory(new DefaultServiceFactory());
-        server.close();
-    }
+function startApi(): express.Application {
+    const restApp: express.Application = express();
+    restApp.set('env', 'test');
+    Server.buildServices(restApp, IoCService, IoCService2, IoCService3, IoCService4);
+    return restApp;
 }
